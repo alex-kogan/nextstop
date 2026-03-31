@@ -8,6 +8,22 @@ export async function searchStops(query: string) {
   return data.stations ?? [];
 }
 
+export async function geocodeAddress(query: string) {
+  const url = `${BASE}/locations?query=${encodeURIComponent(query)}`;
+  const res = await fetch(url, { next: { revalidate: 60 } });
+  if (!res.ok) throw new Error("Failed to geocode address");
+  const data = await res.json();
+  return data.stations ?? [];
+}
+
+export async function nearbyStops(x: number, y: number) {
+  const url = `${BASE}/locations?x=${x}&y=${y}&type=station`;
+  const res = await fetch(url, { next: { revalidate: 60 } });
+  if (!res.ok) throw new Error("Failed to fetch nearby stops");
+  const data = await res.json();
+  return data.stations ?? [];
+}
+
 export async function fetchDepartures(stationId: string, limit = 10) {
   const url = `${BASE}/stationboard?id=${encodeURIComponent(stationId)}&limit=${limit}`;
   const res = await fetch(url, { cache: "no-store" });
