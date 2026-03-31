@@ -1,19 +1,22 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { UserStop, DepartureGroup, Departure } from "@/types";
+import { UserStop, DepartureGroup } from "@/types";
 import DepartureCard from "./DepartureCard";
-import { minutesUntil } from "@/lib/utils";
 
 const REFRESH_INTERVAL = 30_000;
 
-interface Props { initialStops: UserStop[]; }
+const colHeaderStyle: React.CSSProperties = {
+  fontSize: "0.65rem",
+  textTransform: "uppercase",
+  letterSpacing: "0.08em",
+  color: "#999",
+  fontWeight: 500,
+  fontFamily: "'DM Mono', monospace",
+  padding: "6px 12px",
+  borderBottom: "2px solid #e0e0e0",
+};
 
-function nextDepartureLabel(departures: Departure[]): string | null {
-  if (!departures.length) return null;
-  const mins = minutesUntil(departures[0].stop.departure);
-  if (mins <= 0) return "next departure: now";
-  return `next in ${mins}m`;
-}
+interface Props { initialStops: UserStop[]; }
 
 export default function DepartureBoard({ initialStops }: Props) {
   const [groups, setGroups] = useState<DepartureGroup[]>([]);
@@ -66,59 +69,119 @@ export default function DepartureBoard({ initialStops }: Props) {
   }, [lastRefresh]);
 
   return (
-    <div className="space-y-8">
-      {/* Status bar */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="live-dot animate-pulse" />
-          <span className="font-display text-xs tracking-widest uppercase text-muted">
-            {refreshing ? "Updating…" : "Live"}
-          </span>
-        </div>
-        <div className="flex items-center gap-4">
-          <span className="font-display text-xs text-muted">
-            Refreshing in {countdown}s
-          </span>
+    <div style={{ fontFamily: "'DM Sans', sans-serif" }}>
+      {/* Board header */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "1.5rem",
+        }}
+      >
+        <h1
+          style={{
+            fontSize: "1.1rem",
+            fontWeight: 600,
+            color: "#1a1a1a",
+            fontFamily: "'DM Sans', sans-serif",
+            margin: 0,
+          }}
+        >
+          Nächste Abfahrten
+        </h1>
+        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
           <button
             onClick={fetchAll}
             disabled={refreshing}
-            className="font-display text-xs tracking-widest uppercase text-muted hover:text-ink transition-colors disabled:opacity-40"
+            style={{
+              fontSize: "0.65rem",
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+              color: "#999",
+              fontFamily: "'DM Mono', monospace",
+              background: "none",
+              border: "none",
+              cursor: refreshing ? "default" : "pointer",
+              opacity: refreshing ? 0.5 : 1,
+            }}
           >
-            ↺ Refresh
+            {refreshing ? "Updating…" : `↺ ${countdown}s`}
           </button>
+          <span
+            style={{
+              color: "#eb0000",
+              fontWeight: 700,
+              fontSize: "1.1rem",
+              fontFamily: "'DM Sans', sans-serif",
+              letterSpacing: "0.05em",
+            }}
+          >
+            ZVV
+          </span>
         </div>
       </div>
 
-      {/* Stop groups */}
-      {groups.map((group) => {
-        const nextLabel = nextDepartureLabel(group.departures);
-        return (
-          <section key={group.stopId} className="space-y-3">
-            <div className="flex items-baseline gap-3 pb-2 border-b border-border">
-              <h2 className="font-display text-lg font-medium tracking-tight">
-                {group.stopName}
-              </h2>
-              {nextLabel && (
-                <span className="font-display text-xs text-muted tracking-wide">
-                  {nextLabel}
-                </span>
-              )}
+      {/* Stop tables */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+        {groups.map((group) => (
+          <div key={group.stopId}>
+            {/* Stop label */}
+            <div
+              style={{
+                fontSize: "0.65rem",
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+                color: "#999",
+                fontFamily: "'DM Mono', monospace",
+                marginBottom: "0.4rem",
+              }}
+            >
+              {group.stopName}
             </div>
 
             {group.error ? (
-              <p className="text-muted text-sm font-display">{group.error}</p>
+              <p style={{ color: "#999", fontSize: "0.85rem", margin: 0 }}>{group.error}</p>
             ) : group.departures.length === 0 ? (
-              <p className="text-muted text-sm font-display">No upcoming departures.</p>
+              <p style={{ color: "#999", fontSize: "0.85rem", margin: 0 }}>No upcoming departures.</p>
             ) : (
-              <div className="space-y-2">
-                {group.departures.map((dep, i) => (
-                  <DepartureCard key={`${dep.name}-${dep.stop.departure}-${i}`} departure={dep} />
-                ))}
-              </div>
+              <table
+                style={{
+                  width: "100%",
+                  borderCollapse: "collapse",
+                  backgroundColor: "#ffffff",
+                  tableLayout: "auto",
+                }}
+              >
+                <thead>
+                  <tr>
+                    <th style={{ ...colHeaderStyle, textAlign: "left", width: "7rem" }}>Linie</th>
+                    <th style={{ ...colHeaderStyle, textAlign: "left" }}>Richtung</th>
+                    <th style={{ ...colHeaderStyle, textAlign: "left" }}>Ab Haltestelle</th>
+                    <th
+                      className="hidden md:table-cell"
+                      style={{ ...colHeaderStyle, textAlign: "center", width: "5rem" }}
+                    >
+                      Fussweg
+                    </th>
+                    <th style={{ ...colHeaderStyle, textAlign: "right", width: "6rem" }}>Abfahrt</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {group.departures.map((dep, i) => (
+                    <DepartureCard
+                      key={`${dep.name}-${dep.stop.departure}-${i}`}
+                      departure={dep}
+                      stopName={group.stopName}
+                      index={i}
+                    />
+                  ))}
+                </tbody>
+              </table>
             )}
-          </section>
-        );
-      })}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
