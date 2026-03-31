@@ -1,7 +1,8 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { UserStop, DepartureGroup } from "@/types";
+import { UserStop, DepartureGroup, Departure } from "@/types";
 import DepartureCard from "./DepartureCard";
+import { minutesUntil } from "@/lib/utils";
 
 const REFRESH_INTERVAL = 30_000;
 
@@ -9,12 +10,17 @@ const colHeaderStyle: React.CSSProperties = {
   fontSize: "0.65rem",
   textTransform: "uppercase",
   letterSpacing: "0.08em",
-  color: "#999",
-  fontWeight: 500,
+  color: "#0070b4",
+  fontWeight: 600,
   fontFamily: "'DM Mono', monospace",
   padding: "6px 12px",
   borderBottom: "2px solid #e0e0e0",
 };
+
+interface FlatDeparture {
+  departure: Departure;
+  stopName: string;
+}
 
 interface Props { initialStops: UserStop[]; }
 
@@ -29,7 +35,7 @@ export default function DepartureBoard({ initialStops }: Props) {
     const results = await Promise.all(
       initialStops.map(async (stop) => {
         try {
-          const res = await fetch(`/api/departures?id=${stop.stop_id}&limit=8`);
+          const res = await fetch(`/api/departures?id=${stop.stop_id}&limit=12`);
           const data = await res.json();
           return {
             stopId: stop.stop_id,
@@ -68,6 +74,22 @@ export default function DepartureBoard({ initialStops }: Props) {
     return () => clearInterval(tick);
   }, [lastRefresh]);
 
+  // Flatten, filter (0–30 min), sort by departure time
+  const merged: FlatDeparture[] = [];
+  for (const group of groups) {
+    for (const dep of group.departures) {
+      const mins = minutesUntil(dep.stop.departure);
+      if (mins >= 0 && mins <= 30) {
+        merged.push({ departure: dep, stopName: group.stopName });
+      }
+    }
+  }
+  merged.sort(
+    (a, b) =>
+      minutesUntil(a.departure.stop.departure) -
+      minutesUntil(b.departure.stop.departure)
+  );
+
   return (
     <div style={{ fontFamily: "'DM Sans', sans-serif" }}>
       {/* Board header */}
@@ -79,109 +101,87 @@ export default function DepartureBoard({ initialStops }: Props) {
           marginBottom: "1.5rem",
         }}
       >
-        <h1
+        <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+          <div className="live-dot" />
+          <h1
+            style={{
+              fontSize: "1.1rem",
+              fontWeight: 600,
+              color: "#1a1a1a",
+              fontFamily: "'DM Sans', sans-serif",
+              margin: 0,
+            }}
+          >
+            Next Departures
+          </h1>
+        </div>
+        <button
+          onClick={fetchAll}
+          disabled={refreshing}
           style={{
-            fontSize: "1.1rem",
-            fontWeight: 600,
-            color: "#1a1a1a",
-            fontFamily: "'DM Sans', sans-serif",
-            margin: 0,
+            fontSize: "0.65rem",
+            textTransform: "uppercase",
+            letterSpacing: "0.08em",
+            color: "#0070b4",
+            fontFamily: "'DM Mono', monospace",
+            background: "none",
+            border: "none",
+            cursor: refreshing ? "default" : "pointer",
+            opacity: refreshing ? 0.5 : 1,
           }}
         >
-          Nächste Abfahrten
-        </h1>
-        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-          <button
-            onClick={fetchAll}
-            disabled={refreshing}
-            style={{
-              fontSize: "0.65rem",
-              textTransform: "uppercase",
-              letterSpacing: "0.08em",
-              color: "#999",
-              fontFamily: "'DM Mono', monospace",
-              background: "none",
-              border: "none",
-              cursor: refreshing ? "default" : "pointer",
-              opacity: refreshing ? 0.5 : 1,
-            }}
-          >
-            {refreshing ? "Updating…" : `↺ ${countdown}s`}
-          </button>
-          <span
-            style={{
-              color: "#eb0000",
-              fontWeight: 700,
-              fontSize: "1.1rem",
-              fontFamily: "'DM Sans', sans-serif",
-              letterSpacing: "0.05em",
-            }}
-          >
-            ZVV
-          </span>
+          {refreshing ? "Updating…" : `↺ ${countdown}s`}
+        </button>
+      </div>
+
+      {/* Unified table */}
+      {merged.length === 0 && groups.length > 0 ? (
+        <div
+          style={{
+            textAlign: "center",
+            padding: "3rem 1rem",
+            color: "#999",
+            fontSize: "0.9rem",
+            fontFamily: "'DM Mono', monospace",
+          }}
+        >
+          No departures in the next 30 minutes
         </div>
-      </div>
-
-      {/* Stop tables */}
-      <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-        {groups.map((group) => (
-          <div key={group.stopId}>
-            {/* Stop label */}
-            <div
-              style={{
-                fontSize: "0.65rem",
-                textTransform: "uppercase",
-                letterSpacing: "0.08em",
-                color: "#999",
-                fontFamily: "'DM Mono', monospace",
-                marginBottom: "0.4rem",
-              }}
-            >
-              {group.stopName}
-            </div>
-
-            {group.error ? (
-              <p style={{ color: "#999", fontSize: "0.85rem", margin: 0 }}>{group.error}</p>
-            ) : group.departures.length === 0 ? (
-              <p style={{ color: "#999", fontSize: "0.85rem", margin: 0 }}>No upcoming departures.</p>
-            ) : (
-              <table
-                style={{
-                  width: "100%",
-                  borderCollapse: "collapse",
-                  backgroundColor: "#ffffff",
-                  tableLayout: "auto",
-                }}
+      ) : merged.length > 0 ? (
+        <table
+          style={{
+            width: "100%",
+            borderCollapse: "collapse",
+            backgroundColor: "#ffffff",
+            tableLayout: "auto",
+          }}
+        >
+          <thead>
+            <tr>
+              <th style={{ ...colHeaderStyle, textAlign: "left", width: "7rem" }}>Line</th>
+              <th style={{ ...colHeaderStyle, textAlign: "left" }}>Direction</th>
+              <th style={{ ...colHeaderStyle, textAlign: "left" }}>From</th>
+              <th
+                className="hidden md:table-cell"
+                style={{ ...colHeaderStyle, textAlign: "center", width: "5rem" }}
               >
-                <thead>
-                  <tr>
-                    <th style={{ ...colHeaderStyle, textAlign: "left", width: "7rem" }}>Linie</th>
-                    <th style={{ ...colHeaderStyle, textAlign: "left" }}>Richtung</th>
-                    <th style={{ ...colHeaderStyle, textAlign: "left" }}>Ab Haltestelle</th>
-                    <th
-                      className="hidden md:table-cell"
-                      style={{ ...colHeaderStyle, textAlign: "center", width: "5rem" }}
-                    >
-                      Fussweg
-                    </th>
-                    <th style={{ ...colHeaderStyle, textAlign: "right", width: "6rem" }}>Abfahrt</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {group.departures.map((dep, i) => (
-                    <DepartureCard
-                      key={`${dep.name}-${dep.stop.departure}-${i}`}
-                      departure={dep}
-                      stopName={group.stopName}
-                      index={i}
-                    />
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        ))}
-      </div>
+                Walk
+              </th>
+              <th style={{ ...colHeaderStyle, textAlign: "right", width: "6rem" }}>Departs</th>
+            </tr>
+          </thead>
+          <tbody>
+            {merged.map(({ departure, stopName }, i) => (
+              <DepartureCard
+                key={`${departure.name}-${departure.stop.departure}-${stopName}-${i}`}
+                departure={departure}
+                stopName={stopName}
+                index={i}
+              />
+            ))}
+          </tbody>
+        </table>
+      ) : null}
     </div>
   );
 }

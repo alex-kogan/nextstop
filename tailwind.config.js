@@ -14,6 +14,8 @@ module.exports = {
       colors: {
         ink: "#0f0e0d",
         chalk: "#f5f2ee",
+        "page-bg": "#f5f5f5",
+        transit: "#0070b4",
         amber: {
           DEFAULT: "#f59e0b",
           light: "#fde68a",

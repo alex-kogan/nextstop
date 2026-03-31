@@ -9,12 +9,14 @@
   --rail: #1c1917;
   --muted: #78716c;
   --border: #e7e3de;
+  --transit: #0070b4;
+  --page-bg: #f5f5f5;
 }
 
 * { box-sizing: border-box; }
 
 body {
-  background-color: var(--chalk);
+  background-color: var(--page-bg);
   color: var(--ink);
   font-family: 'DM Sans', sans-serif;
 }

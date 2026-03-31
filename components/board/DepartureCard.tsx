@@ -1,23 +1,7 @@
 "use client";
 import { Departure } from "@/types";
 import { formatDepartureTime, minutesUntil } from "@/lib/utils";
-
-function getLineColor(category: string, number: string): string {
-  if (category === "T") {
-    const n = parseInt(number, 10);
-    const colors: Record<number, string> = {
-      2: "#00569b", 3: "#6cb33f", 4: "#c4007a", 5: "#9b6300",
-      6: "#6f2282", 7: "#00694f", 8: "#003c8f", 9: "#00a9c7",
-      10: "#008b7a", 11: "#6cb33f", 13: "#e4007e", 14: "#e84e0f",
-      15: "#0075b0", 17: "#8a7200",
-    };
-    return colors[n] ?? "#888888";
-  }
-  if (category === "B") return "#f07d00";
-  if (category === "S") return "#169b62";
-  if (category === "IR" || category === "IC" || category === "RE") return "#eb0000";
-  return "#888888";
-}
+import { getLineColor } from "@/lib/transitColors";
 
 function TramIcon({ color }: { color: string }) {
   return (
@@ -84,28 +68,28 @@ interface Props {
 }
 
 export default function DepartureCard({ departure, stopName, index }: Props) {
-  const { stop, category, to, number } = departure;
+  const { stop, category, to, number, operator } = departure;
   const minutes = minutesUntil(stop.departure);
   const displayTime = formatDepartureTime(stop.departure);
   const delay = stop.delay ?? 0;
   const isImminent = minutes <= 2;
   const isDelayed = delay > 0;
-  const lineColor = getLineColor(category, number);
+  const lineColor = getLineColor(operator, category, number);
 
-  let abfahrtText: string;
+  let departsText: string;
   if (minutes <= 1) {
-    abfahrtText = "now";
+    departsText = "now";
   } else if (minutes > 60) {
-    abfahrtText = displayTime;
+    departsText = displayTime;
   } else {
-    abfahrtText = `in ${minutes}'`;
+    departsText = `in ${minutes}'`;
   }
 
   const rowBg = index % 2 === 0 ? "#f9f9f9" : "#ffffff";
 
   return (
     <tr style={{ backgroundColor: rowBg, borderBottom: "1px solid #e0e0e0" }}>
-      {/* Linie */}
+      {/* Line */}
       <td style={{ padding: "8px 10px 8px 12px", whiteSpace: "nowrap" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
           <VehicleIcon category={category} color={lineColor} />
@@ -128,7 +112,7 @@ export default function DepartureCard({ departure, stopName, index }: Props) {
         </div>
       </td>
 
-      {/* Richtung */}
+      {/* Direction + from label */}
       <td style={{ padding: "8px 12px", maxWidth: 220 }}>
         <span
           style={{
@@ -144,9 +128,20 @@ export default function DepartureCard({ departure, stopName, index }: Props) {
         >
           {to}
         </span>
+        <span
+          style={{
+            color: "#999",
+            fontSize: "0.72rem",
+            fontFamily: "'DM Mono', monospace",
+            display: "block",
+            marginTop: 1,
+          }}
+        >
+          from: {stopName}
+        </span>
       </td>
 
-      {/* Ab Haltestelle */}
+      {/* From */}
       <td style={{ padding: "8px 12px" }}>
         <span
           style={{
@@ -160,7 +155,7 @@ export default function DepartureCard({ departure, stopName, index }: Props) {
         </span>
       </td>
 
-      {/* Fussweg — hidden on mobile */}
+      {/* Walk — hidden on mobile */}
       <td
         className="hidden md:table-cell"
         style={{ padding: "8px 12px", textAlign: "center" }}
@@ -168,7 +163,7 @@ export default function DepartureCard({ departure, stopName, index }: Props) {
         <span style={{ color: "#999", fontSize: "0.85rem" }}>—</span>
       </td>
 
-      {/* Abfahrt */}
+      {/* Departs */}
       <td style={{ padding: "8px 12px 8px 8px", textAlign: "right", whiteSpace: "nowrap" }}>
         <span
           style={{
@@ -178,7 +173,7 @@ export default function DepartureCard({ departure, stopName, index }: Props) {
             color: isImminent ? "#f59e0b" : "#1a1a1a",
           }}
         >
-          {abfahrtText}
+          {departsText}
         </span>
         {isDelayed && (
           <div>

@@ -18,11 +18,18 @@ export default function Header({ userEmail }: HeaderProps) {
   }
 
   return (
-    <header className="border-b border-border bg-chalk/80 backdrop-blur-sm sticky top-0 z-50">
+    <header
+      className="sticky top-0 z-50"
+      style={{ backgroundColor: "#ffffff", borderBottom: "2px solid #0070b4" }}
+    >
       <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="live-dot" />
-          <Link href="/board" className="font-display text-sm tracking-[0.15em] uppercase font-medium">
+          <Link
+            href="/board"
+            className="font-display text-sm tracking-[0.15em] uppercase font-medium"
+            style={{ color: "#0070b4" }}
+          >
             NextStop
           </Link>
         </div>
@@ -30,7 +37,8 @@ export default function Header({ userEmail }: HeaderProps) {
         <nav className="flex items-center gap-6">
           <Link
             href="/board/stops"
-            className="font-display text-xs tracking-widest uppercase text-muted hover:text-ink transition-colors"
+            className="font-display text-xs tracking-widest uppercase transition-colors"
+            style={{ color: "#0070b4" }}
           >
             My Stops
           </Link>
